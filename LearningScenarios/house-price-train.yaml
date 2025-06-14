@@ -27,7 +27,7 @@ spec:
     # Add your resource plan here. The annotation should follow metadata > labels > ai.sap.com/resourcePlan: <plan>
     metadata:
         labels:
-            ai.sap.com/resourcePlan: starter
+            ai.sap.com/resourcePlan: default
     inputs:
       artifacts:  # placeholder for cloud storage attachements
         - name: housedataset # a name for the placeholder
