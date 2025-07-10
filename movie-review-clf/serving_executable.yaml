@@ -22,7 +22,7 @@ spec:
     spec: |
       predictor:
         imagePullSecrets:
-          - name: clf-tf
+          - name: my-s3-secret1
         containers:
         - name: kfserving-container
           image: "docker.io/sumitds1603/movie-review-clf-serve:0.0.1"
