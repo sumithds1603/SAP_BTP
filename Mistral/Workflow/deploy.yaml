@@ -1,0 +1,138 @@
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: mistral-chatbot-prod
+  annotations:
+    scenarios.ai.sap.com/name: "Mistral Chatbot (Production)"
+    scenarios.ai.sap.com/description: "Production-grade Conversational Agentic RAG Bot powered by Mistral, integrated with SAP OData."
+    executables.ai.sap.com/name: "mistral-chatbot-prod"
+    executables.ai.sap.com/description: "Runs the FastAPI-based conversational inference service integrated with SAP AI Core and OData."
+    artifacts.ai.sap.com/chatbotdata.kind: "dataset"
+  labels:
+    scenarios.ai.sap.com/id: "sap-agentic-mistral-chatbot"
+    ai.sap.com/version: "1.0"
+
+spec:
+  # Secret to pull from Docker Hub
+  imagePullSecrets:
+    - name: mistralchatbotrepo
+
+  # Entry point for the Argo workflow
+  entrypoint: mistral-chatbot-pipeline
+
+  templates:
+  - name: mistral-chatbot-pipeline
+    steps:
+      - - name: deploy
+          template: mistral-chatbot-container
+
+  # -----------------------------------------------------------
+  #  Main container definition for the chatbot API service
+  # -----------------------------------------------------------
+  - name: mistral-chatbot-container
+    inputs:
+      artifacts:
+        - name: chatbotdata
+          path: /app/data/
+
+    container:
+      image: docker.io/sumitds1603/mistral-chatbot:latest
+      command: ["/bin/sh", "-c"]
+      args:
+        - |
+          echo " Launching Mistral Conversational RAG Bot...";
+          uvicorn app:app --host 0.0.0.0 --port 8080
+
+      env:
+        - name: DEBUG
+          value: "false"
+        - name: ALLOW_INSECURE_HTTPS
+          value: "true"
+        - name: EMBED_MODEL_NAME
+          value: "all-MiniLM-L6-v2"
+        - name: DB_FILE
+          value: "/app/data/sap_data.db"
+        - name: FAISS_FILE
+          value: "/app/data/sap_faiss.index"
+        - name: LOG_FILE
+          value: "/app/logs/agentic_ai_app.log"
+
+        # --- SAP AI Core Secret References ---
+        - name: AICORE_DEPLOYMENT_ID
+          valueFrom:
+            secretKeyRef:
+              name: mistral-chatbot-secrets
+              key: AICORE_DEPLOYMENT_ID
+        - name: AICORE_CLIENT_ID
+          valueFrom:
+            secretKeyRef:
+              name: mistral-chatbot-secrets
+              key: AICORE_CLIENT_ID
+        - name: AICORE_CLIENT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: mistral-chatbot-secrets
+              key: AICORE_CLIENT_SECRET
+        - name: AICORE_AUTH_URL
+          valueFrom:
+            secretKeyRef:
+              name: mistral-chatbot-secrets
+              key: AICORE_AUTH_URL
+        - name: AICORE_BASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: mistral-chatbot-secrets
+              key: AICORE_BASE_URL
+        - name: AICORE_RESOURCE_GROUP
+          valueFrom:
+            secretKeyRef:
+              name: mistral-chatbot-secrets
+              key: AICORE_RESOURCE_GROUP
+
+      resources:
+        limits:
+          cpu: "4"
+          memory: "8Gi"
+        requests:
+          cpu: "2"
+          memory: "4Gi"
+
+      ports:
+        - name: http
+          containerPort: 8080
+
+      volumeMounts:
+        - name: data
+          mountPath: /app/data
+        - name: logs
+          mountPath: /app/logs
+
+    # -----------------------------------------------------------
+    # 💾 Persistent Volumes for FAISS + Logs
+    # -----------------------------------------------------------
+    volumes:
+      - name: data
+        persistentVolumeClaim:
+          claimName: mistral-chatbot-data
+      - name: logs
+        persistentVolumeClaim:
+          claimName: mistral-chatbot-logs
+
+    # -----------------------------------------------------------
+    # 🩺 Health and Readiness Probes
+    # -----------------------------------------------------------
+    livenessProbe:
+      httpGet:
+        path: /healthz
+        port: 8080
+      initialDelaySeconds: 60
+      periodSeconds: 60
+      timeoutSeconds: 5
+
+    readinessProbe:
+      httpGet:
+        path: /healthz
+        port: 8080
+      initialDelaySeconds: 20
+      periodSeconds: 30
+      timeoutSeconds: 5
