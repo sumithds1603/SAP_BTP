@@ -9,7 +9,7 @@ metadata:
     executables.ai.sap.com/name: "Mistral Chatbot"
   labels:
     scenarios.ai.sap.com/id: "sap-agentic-mistral-chatbot"
-    ai.sap.com/version: "1.0"
+    ai.sap.com/version: "latest"
 
 spec:
   imagePullSecrets:
