@@ -12,8 +12,9 @@ metadata:
     ai.sap.com/version: "1.0"
 
 spec:
+  # MUST match your Docker Registry Secret name in AI Core (case-sensitive)
   imagePullSecrets:
-    - name: mistral-chatbot   # this must match the Docker Registry Secret you created in Launchpad
+    - name: mistral-chatbot  # <-- change if your secret is named differently
 
   entrypoint: mistral-pipeline
 
@@ -29,12 +30,15 @@ spec:
       command: ["/bin/sh", "-c"]
       args:
         - |
-          echo " Launching Mistral Conversational Agent...";
+          set -e
+          echo "Launching Mistral Conversational Agent..."
+          mkdir -p /app/data /app/logs
+          chmod -R 777 /app/data /app/logs || true
           uvicorn app:app --host 0.0.0.0 --port 8080
 
       env:
         - name: DEBUG
-          value: "false"
+          value: "true"
         - name: ALLOW_INSECURE_HTTPS
           value: "true"
         - name: EMBED_MODEL_NAME
@@ -46,10 +50,7 @@ spec:
         - name: LOG_FILE
           value: "/app/logs/agentic_ai_app.log"
 
-        # These next variables assume you created a generic secret
-        # called mistral-chatbot-secrets in SAP AI Core with keys
-        # AICORE_CLIENT_ID, etc.
-
+        # SAP AI Core creds (Generic Secret must exist with these keys)
         - name: AICORE_DEPLOYMENT_ID
           valueFrom:
             secretKeyRef:
@@ -81,14 +82,15 @@ spec:
               name: mistral-chatbot-secrets
               key: AICORE_RESOURCE_GROUP
 
+      # Start small to satisfy ResourceGroup quotas; increase after success
+      resources:
+        requests:
+          cpu: "1"
+          memory: "2Gi"
+        limits:
+          cpu: "1"
+          memory: "2Gi"
+
       ports:
         - name: http
           containerPort: 8080
-
-      resources:
-        requests:
-          cpu: "2"
-          memory: "4Gi"
-        limits:
-          cpu: "4"
-          memory: "8Gi"
