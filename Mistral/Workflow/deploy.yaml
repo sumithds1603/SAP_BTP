@@ -13,7 +13,7 @@ metadata:
 
 spec:
   imagePullSecrets:
-    - name: mistralchatbotrepo   # this must match the Docker Registry Secret you created in Launchpad
+    - name: mistral-chatbot   # this must match the Docker Registry Secret you created in Launchpad
 
   entrypoint: mistral-pipeline
 
